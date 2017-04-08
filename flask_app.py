@@ -53,8 +53,18 @@ def telegram_webhook():
         if m == '/g':
             bot.sendMessage(chat_id, skribajxo.enhavo)
         elif m == '/start':
+            bot.sendMessage(170378225, u'یک گپ تازه با من شروع شد!')
+            bot.sendMessage(chat_id, 'سلام.\n برای دریافت متن با آخرین تغییرات بزنید /g و متن را کپی کنید؛ حداکثر ۷ نویسه (حرف، فاصله و…) را تغییر دهید و بفرستید.')
+        elif chat_id == 170378225 and  m == '/uzantoj':
+            Uzantoj = Uzanto.select().order_by(Uzanto.id)
+            uzantoj = ''
+            for uzanto in Uzantoj:
+                uzantoj += '>>> '+str(uzanto.tid)+': '+uzanto.nomo+':'+uzanto.familio+': @'+uzanto.uzantnomo+': '+str(uzanto.kontribuinta)+'\n'
+            uzantoj += '---------\n'+str(Uzantoj.count())
+            bot.sendMessage(170378225, uzantoj)
+        else:
             try:
-                Uzanto.get(Uzanto.tid == chat_id)
+                uzanto = Uzanto.get(Uzanto.tid == chat_id)
             except Uzanto.DoesNotExist:
                 try:
                     chat['username']
@@ -68,18 +78,7 @@ def telegram_webhook():
                     chat['last_name']
                 except:
                     chat['last_name'] = ''
-                Uzanto.create(tid=chat['id'], uzantnomo=chat['username'], nomo=chat['first_name'], familio=chat['last_name'])
-                bot.sendMessage(170378225, u'یک گپ تازه با من شروع شد!')
-            bot.sendMessage(chat_id, 'سلام.\n برای دریافت متن با آخرین تغییرات بزنید /g و متن را کپی کنید؛ حداکثر ۷ نویسه (حرف، فاصله و…) را تغییر دهید و بفرستید.')
-        elif chat_id == 170378225 and  m == '/uzantoj':
-            Uzantoj = Uzanto.select().order_by(Uzanto.id)
-            uzantoj = ''
-            for uzanto in Uzantoj:
-                uzantoj += '>>> '+str(uzanto.tid)+': '+uzanto.nomo+':'+uzanto.familio+': @'+uzanto.uzantnomo+': '+str(uzanto.kontribuinta)+'\n'
-            uzantoj += '---------\n'+str(Uzantoj.count())
-            bot.sendMessage(170378225, uzantoj)
-        else:
-            uzanto = Uzanto.get(Uzanto.tid == chat_id)
+                uzanto = Uzanto.create(tid=chat['id'], uzantnomo=chat['username'], nomo=chat['first_name'], familio=chat['last_name'])
             if (datetime.datetime.now() - uzanto.lastaredakto).seconds >= datetime.timedelta(seconds=30).seconds:
                 if ':\n' in m:
                     lasta_duponktoj = m.rindex(':\n')
