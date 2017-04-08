@@ -24,8 +24,8 @@ bot.setWebhook("https://hsn6.pythonanywhere.com/{}".format(secret), max_connecti
 app = Flask(__name__)
 
 #db.connect()
-db.create_tables([Skribajxo, Uzanto])
-Skribajxo.create(enhavo='پنجره با صدای رعد باز شد و نور برق بر اتاق تابید.')
+#db.create_tables([Skribajxo, Uzanto])
+#Skribajxo.create(enhavo='پنجره با صدای رعد باز شد و نور برق بر اتاق تابید.')
 
 '''
 @app.before_request
@@ -37,6 +37,7 @@ def _db_close(exc):
     if not db.is_closed():
         db.close()
 '''
+
 def persi(n):
     return str(n).replace('0', '۰').replace('1', '۱').replace('2', '۲').replace('3', '۳').replace('4', '۴').replace('5', '۵').replace('6', '۶').replace('7', '۷').replace('8', '۸').replace('9', '۹')
 
@@ -46,18 +47,43 @@ def telegram_webhook():
     if "message" in update:
         m = update["message"]["text"]
         #ms = m.split(' ')
-        chat_id = update["message"]["chat"]["id"]
-        try:
-            uzanto = Uzanto.get(Uzanto.tid == chat_id)
-        except Uzanto.DoesNotExist:
-            uzanto = Uzanto.create(tid=chat_id)
+        chat = update["message"]["chat"]
+        chat_id = chat["id"]
         skribajxo = Skribajxo.get()
-        if m == '/start':
-            bot.sendMessage(chat_id, 'سلام.\n برای دریافت متن با آخرین تغییرات بزنید /g و متن را کپی کنید؛ حداکثر ۷ نویسه را تغییر دهید و بفرستید.')
-        elif m == '/g':
+        if m == '/g':
             bot.sendMessage(chat_id, skribajxo.enhavo)
+        elif m == '/start':
+            try:
+                Uzanto.get(Uzanto.tid == chat_id)
+            except Uzanto.DoesNotExist:
+                try:
+                    chat['username']
+                except:
+                    chat['username'] = ''
+                try:
+                    chat['first_name']
+                except:
+                    chat['first_name'] = ''
+                try:
+                    chat['last_name']
+                except:
+                    chat['last_name'] = ''
+                Uzanto.create(tid=chat['id'], uzantnomo=chat['username'], nomo=chat['first_name'], familio=chat['last_name'])
+                bot.sendMessage(170378225, u'یک گپ تازه با من شروع شد!')
+            bot.sendMessage(chat_id, 'سلام.\n برای دریافت متن با آخرین تغییرات بزنید /g و متن را کپی کنید؛ حداکثر ۷ نویسه (حرف، فاصله و…) را تغییر دهید و بفرستید.')
+        elif chat_id == 170378225 and  m == '/uzantoj':
+            Uzantoj = Uzanto.select().order_by(Uzanto.id)
+            uzantoj = ''
+            for uzanto in Uzantoj:
+                uzantoj += '>>> '+str(uzanto.tid)+': '+uzanto.nomo+':'+uzanto.familio+': @'+uzanto.uzantnomo+': '+str(uzanto.kontribuinta)+'\n'
+            uzantoj += '---------\n'+str(Uzantoj.count())
+            bot.sendMessage(170378225, uzantoj)
         else:
+            uzanto = Uzanto.get(Uzanto.tid == chat_id)
             if (datetime.datetime.now() - uzanto.lastaredakto).seconds >= datetime.timedelta(seconds=30).seconds:
+                if ':\n' in m:
+                    lasta_duponktoj = m.rindex(':\n')
+                    m = m[lasta_duponktoj+2:]
                 diferencoj = diff(skribajxo.enhavo, m)
                 diferenco_nombro = 0
                 for diferenco in diferencoj:
@@ -68,10 +94,11 @@ def telegram_webhook():
                     skribajxo.enhavo = m
                     skribajxo.save()
                     uzanto.lastaredakto = datetime.datetime.now()
+                    uzanto.kontribuinta += diferenco_nombro
                     uzanto.save()
                     bot.sendMessage(chat_id, 'تغییرات با موفقیت انجام شد!')
                 else:
-                    bot.sendMessage(chat_id, 'حداکثر ۷ نویسه باید تغییر کند! ممکن است متنی که دارید قدیمی باشد. برای دریافت متن با آخرین تغییرات بزنید /g')
+                    bot.sendMessage(chat_id, 'حداکثر ۷ نویسه (حرف، فاصله و…) باید تغییر کند! دقت کنید که نام‌تان در ابتدای پیام ارسالی نباشد. ممکن است متنی که دارید قدیمی باشد. برای دریافت متن با آخرین تغییرات بزنید /g')
             else:
                 bot.sendMessage(chat_id, '{} ثانیهٔ دیگر منتظر بمانید!'.format(persi(30-(datetime.datetime.now() - uzanto.lastaredakto).seconds)))
                     
